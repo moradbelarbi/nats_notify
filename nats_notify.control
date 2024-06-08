@@ -1,0 +1,3 @@
+comment = 'NATS Notify Extension'
+default_version = '1.0'
+module_pathname = '$libdir/nats_notify'
