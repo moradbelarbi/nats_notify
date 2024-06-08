@@ -59,21 +59,30 @@ void _PG_fini(void)
 
 Datum nats_notify_trigger(PG_FUNCTION_ARGS)
 {
-    TriggerData *trigdata = (TriggerData *) fcinfo->context;
+    TriggerData *trigdata;
+    HeapTuple new_row;
+    TupleDesc tupdesc;
+    char *table_name;
+    char *data;
+    JsonbValue jsonb_val;
+    JsonbParseState *state = NULL;
+    Jsonb *jsonb;
+    char *json_str;
+
+    trigdata = (TriggerData *) fcinfo->context;
+
     if (!CALLED_AS_TRIGGER(fcinfo))
         elog(ERROR, "not called by trigger manager");
 
     if (!TRIGGER_FIRED_BY_INSERT(trigdata->tg_event) && !TRIGGER_FIRED_BY_UPDATE(trigdata->tg_event))
         elog(ERROR, "not fired by insert or update");
 
-    HeapTuple new_row = trigdata->tg_newtuple;
-    TupleDesc tupdesc = trigdata->tg_relation->rd_att;
-    char *table_name = SPI_getrelname(trigdata->tg_relation);
-    char *data = SPI_getvalue(new_row, tupdesc, 1); // Assuming data is in the first column
+    new_row = trigdata->tg_newtuple;
+    tupdesc = trigdata->tg_relation->rd_att;
+    table_name = SPI_getrelname(trigdata->tg_relation);
+    data = SPI_getvalue(new_row, tupdesc, 1); // Assuming data is in the first column
 
-    JsonbValue jsonb_val;
-    JsonbParseState *state = NULL;
-
+    // Préparation pour JSONB
     pushJsonbValue(&state, WJB_BEGIN_OBJECT, NULL);
 
     // Adding table name
@@ -100,19 +109,19 @@ Datum nats_notify_trigger(PG_FUNCTION_ARGS)
 
     pushJsonbValue(&state, WJB_END_OBJECT, NULL);
 
-    Jsonb *jsonb = JsonbValueToJsonb(pushJsonbValue(&state, WJB_END_OBJECT, NULL));
+    jsonb = JsonbValueToJsonb(pushJsonbValue(&state, WJB_END_OBJECT, NULL));
 
-    char *json_str = JsonbToCString(NULL, &jsonb->root, VARSIZE(jsonb));
+    json_str = JsonbToCString(NULL, &jsonb->root, VARSIZE(jsonb));
     notifications = lappend(notifications, pstrdup(json_str));
 
-    PG_RETURN_NEW(new_row);
+    PG_RETURN_POINTER(new_row);
 }
 
 static void nats_commit_callback(XactEvent event, void *arg)
 {
+    ListCell *lc;
     if (event == XACT_EVENT_COMMIT && notifications != NIL)
     {
-        ListCell *lc;
         foreach(lc, notifications)
         {
             char *data = (char *) lfirst(lc);
