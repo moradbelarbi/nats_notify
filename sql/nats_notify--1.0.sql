@@ -1,0 +1,1 @@
+CREATE EXTENSION nats_notify;
