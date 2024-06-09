@@ -5,7 +5,8 @@
 #include "commands/trigger.h"
 #include "utils/jsonb.h"
 #include "utils/guc.h"
-#include "utils/tuplestore.h" // Nouveau : Inclusion de l'en-tête tuplestore.h pour XactEvent
+#include "utils/tuplestore.h"
+#include "executor/xact.h" // Nouveau : Inclusion de l'en-tête xact.h pour XactEvent
 
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
