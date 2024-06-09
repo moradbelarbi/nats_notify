@@ -1,13 +1,17 @@
 #include "postgres.h"
 #include "fmgr.h"
-#include "libpq-fe.h"
+#include "/usr/include/postgresql/libpq-fe.h"
 #include "executor/spi.h"
 #include "commands/trigger.h"
 #include "utils/jsonb.h"
 #include "utils/guc.h"
 #include "utils/tuplestore.h"
 #include "access/xact.h"
-#include "access/htup_details.h"  // Ajouté pour RelationGetDescr
+#include "access/htup_details.h"
+#include "catalog/pg_type.h"    // Ajouté
+#include "access/relscan.h"     // Ajouté
+#include "access/sysattr.h"     // Ajouté
+#include "access/tupdesc.h"     // Ajouté
 
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
@@ -80,14 +84,14 @@ Datum nats_notify_trigger(PG_FUNCTION_ARGS)
         elog(ERROR, "not fired by insert or update");
 
     new_row = trigdata->tg_newtuple;
-    tupdesc = RelationGetDescr(trigdata->tg_relation); // Changed to use RelationGetDescr
+    tupdesc = RelationGetDescr(trigdata->tg_relation); // Utilisation de RelationGetDescr
     table_name = SPI_getrelname(trigdata->tg_relation);
-    data = SPI_getvalue(new_row, tupdesc, 1); // Assuming data is in the first column
+    data = SPI_getvalue(new_row, tupdesc, 1); // Supposons que les données sont dans la première colonne
 
-    // Preparation for JSONB
+    // Préparation pour JSONB
     pushJsonbValue(&state, WJB_BEGIN_OBJECT, NULL);
 
-    // Adding table name
+    // Ajout du nom de la table
     jsonb_val.type = jbvString;
     jsonb_val.val.string.len = strlen("table");
     jsonb_val.val.string.val = "table";
@@ -98,7 +102,7 @@ Datum nats_notify_trigger(PG_FUNCTION_ARGS)
     jsonb_val.val.string.val = table_name;
     pushJsonbValue(&state, WJB_VALUE, &jsonb_val);
 
-    // Adding row data
+    // Ajout des données de la ligne
     jsonb_val.type = jbvString;
     jsonb_val.val.string.len = strlen("data");
     jsonb_val.val.string.val = "data";
