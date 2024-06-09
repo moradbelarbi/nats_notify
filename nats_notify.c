@@ -6,7 +6,7 @@
 #include "utils/jsonb.h"
 #include "utils/guc.h"
 #include "utils/tuplestore.h"
-#include "access/xact.h" // Inclusion correcte de l'en-tête xact.h pour XactEvent
+#include "access/xact.h" // Utilisation du bon chemin pour xact.h
 
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
@@ -126,7 +126,8 @@ static void nats_commit_callback(XactEvent event, void *arg)
         foreach(lc, notifications)
         {
             char *data = (char *) lfirst(lc);
-            PGresult *res = PQexec(conn, data); // Correction : seulement deux arguments
+            const char *paramValues[1] = { data };
+            PGresult *res = PQexecParams(conn, "NOTIFY my_channel, $1", 1, NULL, paramValues, NULL, NULL, 0);
             if (PQresultStatus(res) != PGRES_COMMAND_OK)
                 ereport(WARNING, (errmsg("Failed to publish to NATS: %s", PQresultErrorMessage(res))));
             PQclear(res);
