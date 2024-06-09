@@ -1,7 +1,7 @@
 #include "postgres.h"
-#include "executor/executor.h"
+#include "fmgr.h"
+#include "libpq-fe.h"
 #include "executor/spi.h"
-#include "access/htup_details.h"
 #include "commands/trigger.h"
 #include "utils/jsonb.h"
 #include "utils/guc.h"
@@ -13,7 +13,7 @@ PG_MODULE_MAGIC;
 void _PG_init(void);
 void _PG_fini(void);
 
-static natsConnection *conn = NULL;
+static PGconn *conn = NULL;
 static List *notifications = NIL;
 
 static char *nats_url = NULL;
@@ -41,9 +41,9 @@ void _PG_init(void)
 
     if (nats_url != NULL)
     {
-        natsStatus s = natsConnection_ConnectTo(&conn, nats_url);
-        if (s != NATS_OK)
-            ereport(ERROR, (errmsg("Failed to connect to NATS server: %s", natsStatus_GetText(s))));
+        conn = PQconnectdb(nats_url);
+        if (PQstatus(conn) != CONNECTION_OK)
+            ereport(ERROR, (errmsg("Failed to connect to NATS server: %s", PQerrorMessage(conn))));
     }
 
     RegisterXactCallback(nats_commit_callback, NULL);
@@ -52,7 +52,7 @@ void _PG_init(void)
 void _PG_fini(void)
 {
     if (conn != NULL)
-        natsConnection_Destroy(conn);
+        PQfinish(conn);
     UnregisterXactCallback(nats_commit_callback, NULL);
 }
 
@@ -71,17 +71,17 @@ Datum nats_notify_trigger(PG_FUNCTION_ARGS)
     trigdata = (TriggerData *) fcinfo->context;
 
     if (!CALLED_AS_TRIGGER(fcinfo))
-        ereport(ERROR, (errmsg("Not called by trigger manager")));
+        elog(ERROR, "not called by trigger manager");
 
     if (!TRIGGER_FIRED_BY_INSERT(trigdata->tg_event) && !TRIGGER_FIRED_BY_UPDATE(trigdata->tg_event))
-        ereport(ERROR, (errmsg("Not fired by insert or update")));
+        elog(ERROR, "not fired by insert or update");
 
     new_row = trigdata->tg_newtuple;
-    tupdesc = RelationGetDescr(trigdata->tg_relation);
+    tupdesc = trigdata->tg_relation->rd_att;
     table_name = SPI_getrelname(trigdata->tg_relation);
     data = SPI_getvalue(new_row, tupdesc, 1); // Assuming data is in the first column
 
-    // JSONB preparation
+    // Préparation pour JSONB
     pushJsonbValue(&state, WJB_BEGIN_OBJECT, NULL);
 
     // Adding table name
@@ -124,9 +124,10 @@ static void nats_commit_callback(XactEvent event, void *arg)
         foreach(lc, notifications)
         {
             char *data = (char *) lfirst(lc);
-            natsStatus s = natsConnection_PublishString(conn, "my_channel", data);
-            if (s != NATS_OK)
-                ereport(WARNING, (errmsg("Failed to publish to NATS: %s", natsStatus_GetText(s))));
+            PGresult *res = PQexec(conn, "my_channel", data);
+            if (PQresultStatus(res) != PGRES_COMMAND_OK)
+                ereport(WARNING, (errmsg("Failed to publish to NATS: %s", PQresultErrorMessage(res))));
+            PQclear(res);
         }
 
         list_free_deep(notifications);
