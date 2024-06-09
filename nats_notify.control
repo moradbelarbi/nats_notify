@@ -1,3 +1,5 @@
-comment = 'NATS Notify Extension'
+# nats_notify extension
+comment = 'NATS notification trigger for PostgreSQL'
 default_version = '1.0'
+relocatable = false
 module_pathname = '$libdir/nats_notify'

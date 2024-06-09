@@ -1,6 +1,5 @@
 #include "postgres.h"
 #include "fmgr.h"
-#include "libpq-fe.h"
 #include "nats/nats.h"
 #include "executor/spi.h"
 #include "commands/trigger.h"

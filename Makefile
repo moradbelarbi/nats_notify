@@ -1,9 +1,10 @@
-MODULES = nats_notify
 EXTENSION = nats_notify
-DATA = sql/nats_notify--1.0.sql
+MODULE_big = nats_notify
+OBJS = nats_notify.o
 
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
-SHLIB_LINK = -lnats
+override CFLAGS += -I/usr/include/postgresql -I/usr/local/include
+override LDFLAGS += -L/usr/local/lib -lnats
