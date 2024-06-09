@@ -77,11 +77,11 @@ Datum nats_notify_trigger(PG_FUNCTION_ARGS)
         elog(ERROR, "not fired by insert or update");
 
     new_row = trigdata->tg_newtuple;
-    tupdesc = trigdata->tg_relation->rd_att;
+    tupdesc = RelationGetDescr(trigdata->tg_relation); // Changed to use RelationGetDescr
     table_name = SPI_getrelname(trigdata->tg_relation);
     data = SPI_getvalue(new_row, tupdesc, 1); // Assuming data is in the first column
 
-    // Préparation pour JSONB
+    // Preparation for JSONB
     pushJsonbValue(&state, WJB_BEGIN_OBJECT, NULL);
 
     // Adding table name
