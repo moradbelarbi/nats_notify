@@ -1,7 +1,7 @@
 #include "postgres.h"
-#include "fmgr.h"
-#include "nats/nats.h"
+#include "executor/executor.h"
 #include "executor/spi.h"
+#include "access/htup_details.h"
 #include "commands/trigger.h"
 #include "utils/jsonb.h"
 #include "utils/guc.h"
@@ -71,17 +71,17 @@ Datum nats_notify_trigger(PG_FUNCTION_ARGS)
     trigdata = (TriggerData *) fcinfo->context;
 
     if (!CALLED_AS_TRIGGER(fcinfo))
-        elog(ERROR, "not called by trigger manager");
+        ereport(ERROR, (errmsg("Not called by trigger manager")));
 
     if (!TRIGGER_FIRED_BY_INSERT(trigdata->tg_event) && !TRIGGER_FIRED_BY_UPDATE(trigdata->tg_event))
-        elog(ERROR, "not fired by insert or update");
+        ereport(ERROR, (errmsg("Not fired by insert or update")));
 
     new_row = trigdata->tg_newtuple;
-    tupdesc = trigdata->tg_relation->rd_att;
+    tupdesc = RelationGetDescr(trigdata->tg_relation);
     table_name = SPI_getrelname(trigdata->tg_relation);
     data = SPI_getvalue(new_row, tupdesc, 1); // Assuming data is in the first column
 
-    // Préparation pour JSONB
+    // JSONB preparation
     pushJsonbValue(&state, WJB_BEGIN_OBJECT, NULL);
 
     // Adding table name
