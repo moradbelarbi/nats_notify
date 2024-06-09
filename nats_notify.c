@@ -126,7 +126,7 @@ static void nats_commit_callback(XactEvent event, void *arg)
         foreach(lc, notifications)
         {
             char *data = (char *) lfirst(lc);
-            PGresult *res = PQexec(conn, "my_channel", data);
+            PGresult *res = PQexec(conn, data); // Correction : seulement deux arguments
             if (PQresultStatus(res) != PGRES_COMMAND_OK)
                 ereport(WARNING, (errmsg("Failed to publish to NATS: %s", PQresultErrorMessage(res))));
             PQclear(res);
