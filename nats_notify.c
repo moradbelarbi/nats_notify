@@ -1,12 +1,12 @@
 #include "postgres.h"
 #include "fmgr.h"
-#include "libpq-fe.h"
+#include "/usr/include/postgresql/libpq-fe.h"
 #include "executor/spi.h"
 #include "commands/trigger.h"
 #include "utils/jsonb.h"
 #include "utils/guc.h"
 #include "utils/tuplestore.h"
-#include "access/xact.h" // Utilisation du bon chemin pour xact.h
+#include "access/xact.h"
 
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
